@@ -3,6 +3,7 @@ use std::{
     env,
     fs::{File, read_to_string},
     io::Read,
+    time::Instant,
 };
 
 use serde::Deserialize;
@@ -37,7 +38,6 @@ impl WordProcessor {
                 total_words += 1;
                 word.to_lowercase()
                     .chars()
-                    //TODO: handle '
                     .take_while(|char| char.is_alphabetic())
                     .collect::<String>()
             })
@@ -91,6 +91,7 @@ impl WordFilter {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
+    let now = Instant::now();
     let num = args.len();
     let mut data = String::new();
 
@@ -112,7 +113,7 @@ fn main() {
         let (Some(arg1), Some(arg2)) = (args.first(), args.get(1)) else {
             continue;
         };
-        //TODO: proper command handling (possibly a 3rd party library?)
+        //TODO: proper command handling (clap)
         //TODO: ngrams (somehow? idk? how do I even do that?)
         match (arg1.as_str(), arg2.as_str()) {
             ("--top", num) => {
@@ -159,4 +160,5 @@ fn main() {
             _ => (),
         }
     }
+    println!("processing finished after {} ms", now.elapsed().as_millis());
 }
