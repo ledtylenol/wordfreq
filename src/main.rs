@@ -29,11 +29,17 @@ fn main() {
     f.read_to_string(&mut data).expect("could not read file");
     let data = data
         .split_whitespace()
+        .map(|word| {
+            word.to_lowercase()
+                .chars()
+                .filter(|char| char.is_alphabetic())
+                .collect::<String>()
+        })
         .fold(HashMap::new(), collect_to_hashmap);
     let mut data = data.into_iter().collect::<Vec<_>>();
     data.sort_by(|a, b| b.1.cmp(&a.1));
     for args in args.windows(2) {
-        let (Some(arg1), Some(arg2)) = (args.get(0), args.get(1)) else {
+        let (Some(arg1), Some(arg2)) = (args.first(), args.get(1)) else {
             continue;
         };
         if let (true, Ok(num)) = (arg1 == "--top", arg2.parse::<usize>()) {
