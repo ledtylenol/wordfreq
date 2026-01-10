@@ -1,12 +1,33 @@
 use std::{
     collections::{HashMap, HashSet},
-    env,
     fs::{File, read_to_string},
     io::Read,
+    path::PathBuf,
     time::Instant,
 };
 
+use clap::Parser;
 use serde::Deserialize;
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Commands {
+    /// File to analyze
+    #[arg(value_name = "FILE")]
+    file: PathBuf,
+
+    /// Whether to include stopwords
+    #[arg(short = 'a', long)]
+    analyze_stopwords: bool,
+
+    /// List the top N words
+    #[arg(short = 't', long, value_name = "N")]
+    top: Option<usize>,
+
+    ///Show various statistics about diversity
+    #[arg(short = 'd', long)]
+    diversity: bool,
+}
 
 struct WordProcessor {
     pub words: Vec<WordData>,
@@ -72,93 +93,71 @@ struct WordData {
     pub count: usize,
 }
 
-impl WordData {
-    fn new(word: String, count: usize) -> Self {
-        Self { word, count }
-    }
-}
 #[derive(Deserialize)]
 struct WordFilter(HashSet<String>);
 
 impl WordFilter {
-    fn insert(&mut self, s: impl Into<String>) -> bool {
-        self.0.insert(s.into())
-    }
     fn contains(&self, s: &str) -> bool {
         self.0.contains(s)
     }
 }
 
 fn main() {
-    let args = env::args().collect::<Vec<_>>();
+    let commands = Commands::parse();
     let now = Instant::now();
-    let num = args.len();
     let mut data = String::new();
 
-    let set = if !args.iter().any(|arg| arg == "--filter-stopwords") {
-        None
-    } else {
+    let set = if commands.analyze_stopwords {
         let filter_words = read_to_string("./stop_words.json").expect("cannot find stopword file");
         Some(serde_json::from_str(&filter_words).unwrap())
+    } else {
+        None
     };
-    println!("{args:?}, {num}");
-    let filename = args.get(1).expect("invalid filename");
+    let filename = commands.file;
 
     let mut f = File::open(filename).expect("filesystem error");
 
     //TODO: handle by line? prevent allocating too much memory
     f.read_to_string(&mut data).expect("could not read file");
     let processor = WordProcessor::from_str(&data, set);
-    for args in args.windows(2) {
-        let (Some(arg1), Some(arg2)) = (args.first(), args.get(1)) else {
-            continue;
-        };
-        //TODO: proper command handling (clap)
-        //TODO: ngrams (somehow? idk? how do I even do that?)
-        match (arg1.as_str(), arg2.as_str()) {
-            ("--top", num) => {
-                println!();
-                let num = num
-                    .parse::<usize>()
-                    .expect("--top must be followed by a valid number");
-                if num > data.len() {
-                    println!("the given number exceeds the total word count. continuing anyway");
-                }
-                for (i, WordData { word, count }) in processor.words.iter().take(num).enumerate() {
-                    println!("top {} word: {word:?} with {count} appearances", i + 1);
-                }
-            }
-            ("--diversity", _) | (_, "--diversity") => {
-                println!();
-                println!(
-                    "Diversitate:\nTotal cuvinte: {total}\nCuvinte unice: {unic} ({procent:.1}%)\nToken-Type Ratio: {ratio} ({diversitate})\n",
-                    total = processor.total_words,
-                    unic = processor.words.len(),
-                    procent = processor.ttr * 100.0,
-                    ratio = processor.ttr,
-                    //TODO:
-                    diversitate = "todo"
-                );
-                //should never panic
-                let max = processor
-                    .words
-                    .iter()
-                    .max_by(|a, b| a.word.len().cmp(&b.word.len()))
-                    .unwrap();
-                println!(
-                    "Lungimea medie cuvant: {len:.2}\nCel mai lung cuvant: \"{cuv}\" ({caractere} caractere)\n",
-                    len = processor.avglen,
-                    cuv = max.word,
-                    caractere = max.word.len()
-                );
-                println!(
-                    "Cuvinte rare (1 aparitie): {count}, ({percent:.1}% din vocabular)",
-                    count = processor.rare_words,
-                    percent = 100.0 * processor.rare_words as f64 / processor.total_words as f64
-                )
-            }
-            _ => (),
+    if let Some(num) = commands.top {
+        println!();
+        if num > data.len() {
+            println!("the given number exceeds the total word count. continuing anyway");
         }
+        for (i, WordData { word, count }) in processor.words.iter().take(num).enumerate() {
+            println!("top {} word: {word:?} with {count} appearances", i + 1);
+        }
+    }
+
+    if commands.diversity {
+        println!();
+        println!(
+            "Diversitate:\nTotal cuvinte: {total}\nCuvinte unice: {unic} ({procent:.1}%)\nToken-Type Ratio: {ratio} ({diversitate})\n",
+            total = processor.total_words,
+            unic = processor.words.len(),
+            procent = processor.ttr * 100.0,
+            ratio = processor.ttr,
+            //TODO:
+            diversitate = "todo"
+        );
+        //should never panic
+        let max = processor
+            .words
+            .iter()
+            .max_by(|a, b| a.word.len().cmp(&b.word.len()))
+            .unwrap();
+        println!(
+            "Lungimea medie cuvant: {len:.2}\nCel mai lung cuvant: \"{cuv}\" ({caractere} caractere)\n",
+            len = processor.avglen,
+            cuv = max.word,
+            caractere = max.word.len()
+        );
+        println!(
+            "Cuvinte rare (1 aparitie): {count}, ({percent:.1}% din vocabular)",
+            count = processor.rare_words,
+            percent = 100.0 * processor.rare_words as f64 / processor.words.len() as f64
+        )
     }
     println!("processing finished after {} ms", now.elapsed().as_millis());
 }
