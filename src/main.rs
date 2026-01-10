@@ -23,15 +23,24 @@ impl WordProcessor {
             acc
         };
         let data = data
-            .split(|c: char| c.is_whitespace() || c == ',' || c == '.' || c == '"')
-            .filter(|s| !s.is_empty())
+            .split(|c: char| {
+                c.is_whitespace()
+                    || c == ','
+                    || c == '.'
+                    || c == '"'
+                    || c == '!'
+                    || c == '?'
+                    || c == '-'
+                    || c == '—'
+            })
             .map(|word| {
                 total_words += 1;
                 word.to_lowercase()
                     .chars()
-                    .filter(|char| char.is_alphabetic())
+                    .take_while(|char| char.is_alphabetic())
                     .collect::<String>()
-            });
+            })
+            .filter(|s| !s.is_empty());
         let data = match filter {
             Some(f) => data
                 .filter(|data| !f.contains(data))
@@ -114,7 +123,7 @@ fn main() {
                     println!("the given number exceeds the total word count. continuing anyway");
                 }
                 for (i, WordData { word, count }) in processor.words.iter().take(num).enumerate() {
-                    println!("top {} word: {word} with {count} appearances", i + 1);
+                    println!("top {} word: {word:?} with {count} appearances", i + 1);
                 }
             }
             ("--diversity", _) | (_, "--diversity") => {
