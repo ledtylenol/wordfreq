@@ -38,7 +38,7 @@ impl WordProcessor {
                 word.to_lowercase()
                     .chars()
                     //TODO: handle '
-                    .take_while(|char| char.is_alphabetic() || *char == '\'' || *char == '’')
+                    .take_while(|char| char.is_alphabetic())
                     .collect::<String>()
             })
             .filter(|s| !s.is_empty());
