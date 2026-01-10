@@ -107,7 +107,7 @@ fn main() {
     let now = Instant::now();
     let mut data = String::new();
 
-    let set = if commands.analyze_stopwords {
+    let set = if !commands.analyze_stopwords {
         let filter_words = read_to_string("./stop_words.json").expect("cannot find stopword file");
         Some(serde_json::from_str(&filter_words).unwrap())
     } else {
