@@ -16,9 +16,6 @@ struct WordProcessor {
 }
 
 impl WordProcessor {
-    pub fn diversity(&self) -> f64 {
-        self.total_words as f64 / self.words.len() as f64
-    }
     pub fn from_str(data: &str, filter: Option<WordFilter>) -> Self {
         let mut total_words = 0;
         let collect_to_hashmap = |mut acc: HashMap<_, _>, elem| {
@@ -96,15 +93,17 @@ fn main() {
     println!("{args:?}, {num}");
     let filename = args.get(1).expect("invalid filename");
 
-    let mut f = File::open(filename).expect("eroare de filesystem");
+    let mut f = File::open(filename).expect("filesystem error");
 
+    //TODO: handle by line? prevent allocating too much memory
     f.read_to_string(&mut data).expect("could not read file");
     let processor = WordProcessor::from_str(&data, set);
     for args in args.windows(2) {
         let (Some(arg1), Some(arg2)) = (args.first(), args.get(1)) else {
             continue;
         };
-        //TODO proper command handling
+        //TODO: proper command handling (possibly a 3rd party library?)
+        //TODO: ngrams (somehow? idk? how do I even do that?)
         match (arg1.as_str(), arg2.as_str()) {
             ("--top", num) => {
                 println!();
@@ -126,6 +125,7 @@ fn main() {
                     unic = processor.words.len(),
                     procent = processor.ttr * 100.0,
                     ratio = processor.ttr,
+                    //TODO:
                     diversitate = "todo"
                 );
                 //should never panic
@@ -135,10 +135,15 @@ fn main() {
                     .max_by(|a, b| a.word.len().cmp(&b.word.len()))
                     .unwrap();
                 println!(
-                    "Lungimea medie cuvant: {len:.2}\nCel mai lung cuvant: \"{cuv}\" ({caractere} caractere) ",
+                    "Lungimea medie cuvant: {len:.2}\nCel mai lung cuvant: \"{cuv}\" ({caractere} caractere)\n",
                     len = processor.avglen,
                     cuv = max.word,
                     caractere = max.word.len()
+                );
+                println!(
+                    "Cuvinte rare (1 aparitie): {count}, ({percent:.1}% din vocabular)",
+                    count = processor.rare_words,
+                    percent = 100.0 * processor.rare_words as f64 / processor.total_words as f64
                 )
             }
             _ => (),
