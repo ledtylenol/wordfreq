@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    fs::{File, read_to_string},
+    fs::File,
     io::Read,
     path::PathBuf,
     time::Instant,
@@ -21,8 +21,12 @@ struct Commands {
     analyze_stopwords: bool,
 
     /// List the top N words
-    #[arg(short = 't', long, value_name = "N")]
+    #[arg(short = 't', long, value_name = "N", value_parser = 1..10000)]
     top: Option<usize>,
+    /// Lists the bottom N words
+    /// WARNING: sorting is non deterministic, so multiple rare words will be random on every call
+    #[arg(long, value_name = "N", value_parser = 1..10000)]
+    bottom: Option<usize>,
 
     ///Show various statistics about diversity
     #[arg(short = 'd', long)]
@@ -108,8 +112,8 @@ fn main() {
     let mut data = String::new();
 
     let set = if !commands.analyze_stopwords {
-        let filter_words = read_to_string("./stop_words.json").expect("cannot find stopword file");
-        Some(serde_json::from_str(&filter_words).unwrap())
+        let filter_words = include_str!("../stop_words.json");
+        Some(serde_json::from_str(filter_words).unwrap())
     } else {
         None
     };
@@ -127,6 +131,19 @@ fn main() {
         }
         for (i, WordData { word, count }) in processor.words.iter().take(num).enumerate() {
             println!("top {} word: {word:?} with {count} appearances", i + 1);
+        }
+    }
+    if let Some(num) = commands.bottom {
+        println!();
+        if num > data.len() {
+            println!("the given number exceeds the total word count. continuing anyway");
+        }
+        for (i, WordData { word, count }) in processor.words.iter().rev().take(num).enumerate() {
+            if *count > 1 {
+                println!("bottom {} word: {word:?} with {count} appearances", i + 1);
+            } else {
+                println!("bottom {} word: {word:?}", i + 1);
+            }
         }
     }
 
