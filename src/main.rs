@@ -14,8 +14,6 @@ fn main() {
         .expect("primul agument trebuie sa fie numele fileului de citit");
     let mut data = String::new();
 
-    println!("dati numele fisierului: ");
-
     let mut f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -32,7 +30,16 @@ fn main() {
     let data = data
         .split_whitespace()
         .fold(HashMap::new(), collect_to_hashmap);
-    for (k, v) in data {
-        println!("cuvantul {k} este prezent de {v} ori");
+    let mut data = data.into_iter().collect::<Vec<_>>();
+    data.sort_by(|a, b| b.1.cmp(&a.1));
+    for args in args.windows(2) {
+        let (Some(arg1), Some(arg2)) = (args.get(0), args.get(1)) else {
+            continue;
+        };
+        if let (true, Ok(num)) = (arg1 == "--top", arg2.parse::<usize>()) {
+            for (i, (word, count)) in data.iter().take(num).enumerate() {
+                println!("top {} word: {word} with {count} appearances", i + 1);
+            }
+        }
     }
 }
