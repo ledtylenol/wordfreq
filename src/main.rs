@@ -9,9 +9,10 @@ use serde::Deserialize;
 
 struct WordProcessor {
     pub words: Vec<WordData>,
-    pub avglen: usize,
+    pub avglen: f64,
     pub ttr: f64,
     pub total_words: usize,
+    pub rare_words: usize,
 }
 
 impl WordProcessor {
@@ -46,13 +47,16 @@ impl WordProcessor {
             .collect::<Vec<WordData>>();
         words.sort_by(|a, b| b.count.cmp(&a.count));
 
-        let avglen = words.iter().map(|data| data.word.len()).sum::<usize>() / words.len();
+        let avglen =
+            words.iter().map(|data| data.word.len()).sum::<usize>() as f64 / words.len() as f64;
         let ttr = words.len() as f64 / total_words as f64;
+        let rare_words = words.iter().filter(|word| word.count == 1).count();
         Self {
             words,
             avglen,
             total_words,
             ttr,
+            rare_words,
         }
     }
 }
@@ -100,8 +104,10 @@ fn main() {
         let (Some(arg1), Some(arg2)) = (args.first(), args.get(1)) else {
             continue;
         };
+        //TODO proper command handling
         match (arg1.as_str(), arg2.as_str()) {
             ("--top", num) => {
+                println!();
                 let num = num
                     .parse::<usize>()
                     .expect("--top must be followed by a valid number");
@@ -113,13 +119,26 @@ fn main() {
                 }
             }
             ("--diversity", _) | (_, "--diversity") => {
-                print!(
-                    "Diversitate:\nTotal cuvinte: {total}\nCuvinte unice: {unic} ({procent:.1})\nToken-Type Ratio: {ratio} ({diversitate})",
+                println!();
+                println!(
+                    "Diversitate:\nTotal cuvinte: {total}\nCuvinte unice: {unic} ({procent:.1}%)\nToken-Type Ratio: {ratio} ({diversitate})\n",
                     total = processor.total_words,
                     unic = processor.words.len(),
                     procent = processor.ttr * 100.0,
                     ratio = processor.ttr,
                     diversitate = "todo"
+                );
+                //should never panic
+                let max = processor
+                    .words
+                    .iter()
+                    .max_by(|a, b| a.word.len().cmp(&b.word.len()))
+                    .unwrap();
+                println!(
+                    "Lungimea medie cuvant: {len:.2}\nCel mai lung cuvant: \"{cuv}\" ({caractere} caractere) ",
+                    len = processor.avglen,
+                    cuv = max.word,
+                    caractere = max.word.len()
                 )
             }
             _ => (),
