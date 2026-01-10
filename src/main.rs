@@ -1,9 +1,6 @@
-use std::{
-    collections::HashMap,
-    env,
-    fs::File,
-    io::{Read, stdin},
-};
+use std::{collections::HashMap, env, fs::File, io::Read};
+
+struct WordProcessor {}
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
@@ -28,7 +25,8 @@ fn main() {
     };
     f.read_to_string(&mut data).expect("could not read file");
     let data = data
-        .split_whitespace()
+        .split(|c: char| c.is_whitespace() || c == ',' || c == '.' || c == '"')
+        .filter(|s| !s.is_empty())
         .map(|word| {
             word.to_lowercase()
                 .chars()
@@ -43,6 +41,9 @@ fn main() {
             continue;
         };
         if let (true, Ok(num)) = (arg1 == "--top", arg2.parse::<usize>()) {
+            if num > data.len() {
+                println!("the given number exceeds the total word count. continuing anyway");
+            }
             for (i, (word, count)) in data.iter().take(num).enumerate() {
                 println!("top {} word: {word} with {count} appearances", i + 1);
             }
