@@ -1,13 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
-    io::Read,
+    fs::{File, OpenOptions},
+    io::{Read, Write},
     path::PathBuf,
     time::Instant,
 };
 
 use clap::Parser;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+use anyhow::Result;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -28,11 +30,15 @@ struct Commands {
     #[arg(long, value_name = "N", value_parser = 1..10000)]
     bottom: Option<usize>,
 
-    ///Show various statistics about diversity
+    /// Show various statistics about diversity
     #[arg(short = 'd', long)]
     diversity: bool,
+
+    #[arg(long, short = 'o')]
+    out: Option<PathBuf>,
 }
 
+#[derive(Serialize)]
 struct WordProcessor {
     pub words: Vec<WordData>,
     pub avglen: f64,
@@ -92,6 +98,8 @@ impl WordProcessor {
         }
     }
 }
+
+#[derive(Deserialize, Serialize)]
 struct WordData {
     pub word: String,
     pub count: usize,
@@ -104,6 +112,14 @@ impl WordFilter {
     fn contains(&self, s: &str) -> bool {
         self.0.contains(s)
     }
+}
+
+fn write_to_file(path: &PathBuf, data: &str) -> Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.write(true).truncate(true);
+    let mut file = opts.open(path)?;
+    file.write_all(data.as_bytes())?;
+    Ok(())
 }
 
 fn main() {
@@ -150,7 +166,7 @@ fn main() {
     if commands.diversity {
         println!();
         println!(
-            "Diversitate:\nTotal cuvinte: {total}\nCuvinte unice: {unic} ({procent:.1}%)\nToken-Type Ratio: {ratio} ({diversitate})\n",
+            "Diversity:\nTotal words: {total}\nUnique words: {unic} ({procent:.1}%)\nToken-Type Ratio: {ratio} ({diversitate})\n",
             total = processor.total_words,
             unic = processor.words.len(),
             procent = processor.ttr * 100.0,
@@ -165,7 +181,7 @@ fn main() {
             .max_by(|a, b| a.word.len().cmp(&b.word.len()))
             .unwrap();
         println!(
-            "Lungimea medie cuvant: {len:.2}\nCel mai lung cuvant: \"{cuv}\" ({caractere} caractere)\n",
+            "Average word length: {len:.2}\nLongest word: \"{cuv}\" ({caractere} characters)\n",
             len = processor.avglen,
             cuv = max.word,
             caractere = max.word.len()
@@ -175,6 +191,16 @@ fn main() {
             count = processor.rare_words,
             percent = 100.0 * processor.rare_words as f64 / processor.words.len() as f64
         )
+    }
+    if let Some(path) = commands.out {
+        match serde_json::ser::to_string_pretty(&processor) {
+            Ok(res) => {
+                println!("success. writing to {path:?}");
+            }
+            Err(e) => {
+                eprintln!("{e}");
+            }
+        }
     }
     println!("processing finished after {} ms", now.elapsed().as_millis());
 }
