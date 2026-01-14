@@ -34,17 +34,19 @@ struct Commands {
     #[arg(short = 'd', long)]
     diversity: bool,
 
+    /// Path to write to
     #[arg(long, short = 'o')]
     out: Option<PathBuf>,
 }
 
 #[derive(Serialize)]
 struct WordProcessor {
-    pub words: Vec<WordData>,
     pub avglen: f64,
     pub ttr: f64,
     pub total_words: usize,
     pub rare_words: usize,
+    pub unique_words: usize,
+    pub words: Vec<WordData>,
 }
 
 impl WordProcessor {
@@ -90,6 +92,8 @@ impl WordProcessor {
         let ttr = words.len() as f64 / total_words as f64;
         let rare_words = words.iter().filter(|word| word.count == 1).count();
         Self {
+            //store the length for json purposes
+            unique_words: words.len(),
             words,
             avglen,
             total_words,
@@ -116,7 +120,7 @@ impl WordFilter {
 
 fn write_to_file(path: &PathBuf, data: &str) -> Result<()> {
     let mut opts = OpenOptions::new();
-    opts.write(true).truncate(true);
+    opts.write(true).truncate(true).create(true);
     let mut file = opts.open(path)?;
     file.write_all(data.as_bytes())?;
     Ok(())
@@ -196,9 +200,11 @@ fn main() {
         match serde_json::ser::to_string_pretty(&processor) {
             Ok(res) => {
                 println!("success. writing to {path:?}");
+                let _ = write_to_file(&path, &res)
+                    .inspect_err(|e| eprintln!("could not write to file: {e}"));
             }
             Err(e) => {
-                eprintln!("{e}");
+                eprintln!("could not write to file: {e}");
             }
         }
     }
