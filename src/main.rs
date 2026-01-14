@@ -1,122 +1,20 @@
 use std::{
-    collections::{HashMap, HashSet},
     fs::{File, OpenOptions},
     io::{Read, Write},
     path::PathBuf,
     time::Instant,
 };
 
-use clap::Parser;
-use serde::{Deserialize, Serialize};
-
 use anyhow::Result;
+use clap::Parser;
 
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Commands {
-    /// File to analyze
-    #[arg(value_name = "FILE")]
-    file: PathBuf,
+use crate::{
+    commands::Commands,
+    data::{WordData, WordProcessor},
+};
 
-    /// Whether to include stopwords
-    #[arg(short = 'a', long)]
-    analyze_stopwords: bool,
-
-    /// List the top N words
-    #[arg(short = 't', long, value_name = "N", value_parser = 1..10000)]
-    top: Option<usize>,
-    /// Lists the bottom N words
-    /// WARNING: sorting is non deterministic, so multiple rare words will be random on every call
-    #[arg(long, value_name = "N", value_parser = 1..10000)]
-    bottom: Option<usize>,
-
-    /// Show various statistics about diversity
-    #[arg(short = 'd', long)]
-    diversity: bool,
-
-    /// Path to write to
-    #[arg(long, short = 'o')]
-    out: Option<PathBuf>,
-}
-
-#[derive(Serialize)]
-struct WordProcessor {
-    pub avglen: f64,
-    pub ttr: f64,
-    pub total_words: usize,
-    pub rare_words: usize,
-    pub unique_words: usize,
-    pub words: Vec<WordData>,
-}
-
-impl WordProcessor {
-    pub fn from_str(data: &str, filter: Option<WordFilter>) -> Self {
-        let mut total_words = 0;
-        let collect_to_hashmap = |mut acc: HashMap<_, _>, elem| {
-            acc.entry(elem).and_modify(|e| *e += 1).or_insert(1);
-            acc
-        };
-        let data = data
-            .split(|c: char| {
-                c.is_whitespace()
-                    || c == ','
-                    || c == '.'
-                    || c == '"'
-                    || c == '!'
-                    || c == '?'
-                    || c == '-'
-                    || c == '—'
-            })
-            .map(|word| {
-                total_words += 1;
-                word.to_lowercase()
-                    .chars()
-                    .take_while(|char| char.is_alphabetic())
-                    .collect::<String>()
-            })
-            .filter(|s| !s.is_empty());
-        let data = match filter {
-            Some(f) => data
-                .filter(|data| !f.contains(data))
-                .fold(HashMap::new(), collect_to_hashmap),
-            None => data.fold(HashMap::new(), collect_to_hashmap),
-        };
-        let mut words = data
-            .into_iter()
-            .map(|(word, count)| WordData { word, count })
-            .collect::<Vec<WordData>>();
-        words.sort_by(|a, b| b.count.cmp(&a.count));
-
-        let avglen =
-            words.iter().map(|data| data.word.len()).sum::<usize>() as f64 / words.len() as f64;
-        let ttr = words.len() as f64 / total_words as f64;
-        let rare_words = words.iter().filter(|word| word.count == 1).count();
-        Self {
-            //store the length for json purposes
-            unique_words: words.len(),
-            words,
-            avglen,
-            total_words,
-            ttr,
-            rare_words,
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize)]
-struct WordData {
-    pub word: String,
-    pub count: usize,
-}
-
-#[derive(Deserialize)]
-struct WordFilter(HashSet<String>);
-
-impl WordFilter {
-    fn contains(&self, s: &str) -> bool {
-        self.0.contains(s)
-    }
-}
+mod commands;
+mod data;
 
 fn write_to_file(path: &PathBuf, data: &str) -> Result<()> {
     let mut opts = OpenOptions::new();
@@ -196,16 +94,20 @@ fn main() {
             percent = 100.0 * processor.rare_words as f64 / processor.words.len() as f64
         )
     }
-    if let Some(path) = commands.out {
-        match serde_json::ser::to_string_pretty(&processor) {
-            Ok(res) => {
-                println!("success. writing to {path:?}");
-                let _ = write_to_file(&path, &res)
-                    .inspect_err(|e| eprintln!("could not write to file: {e}"));
+    if let Some(out) = commands.out {
+        if commands.write_words {
+            match serde_json::ser::to_string_pretty(&processor) {
+                Ok(res) => {
+                    println!("success. writing to {out:?}");
+                    let _ = write_to_file(&out, &res)
+                        .inspect_err(|e| eprintln!("could not write to file: {e}"));
+                }
+                Err(e) => {
+                    eprintln!("could not write to file: {e}");
+                }
             }
-            Err(e) => {
-                eprintln!("could not write to file: {e}");
-            }
+        } else {
+            todo!("add non-word-export-mode-thing");
         }
     }
     println!("processing finished after {} ms", now.elapsed().as_millis());
