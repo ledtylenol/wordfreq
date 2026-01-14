@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser};
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Commands {
@@ -14,21 +14,28 @@ pub struct Commands {
 
     /// List the top N words
     #[arg(short = 't', long, value_name = "N", value_parser = 1..10000)]
-    pub top: Option<usize>,
+    pub top: Option<i64>,
     /// Lists the bottom N words
     /// WARNING: sorting is non deterministic, so multiple rare words will be random on every call
     #[arg(long, value_name = "N", value_parser = 1..10000)]
-    pub bottom: Option<usize>,
+    pub bottom: Option<i64>,
 
     /// Show various statistics about diversity
     #[arg(short = 'd', long)]
     pub diversity: bool,
 
     /// Path to write to
-    #[arg(long, short = 'o', group = "write")]
+    #[command(flatten)]
+    pub write: WriteTo,
+}
+
+#[derive(Args)]
+#[group(required = true)]
+pub struct WriteTo {
+    #[arg(long, short = 'o')]
     pub out: Option<PathBuf>,
 
     /// Whether to include words in the export
-    #[arg(long, group = "write")]
+    #[arg(short, long)]
     pub write_words: bool,
 }

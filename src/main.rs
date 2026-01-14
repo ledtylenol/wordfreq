@@ -42,7 +42,7 @@ fn main() {
     //TODO: handle by line? prevent allocating too much memory
     f.read_to_string(&mut data).expect("could not read file");
     let processor = WordProcessor::from_str(&data, set);
-    if let Some(num) = commands.top {
+    if let Some(num) = commands.top.map(|num| num as usize) {
         println!();
         if num > data.len() {
             println!("the given number exceeds the total word count. continuing anyway");
@@ -51,7 +51,7 @@ fn main() {
             println!("top {} word: {word:?} with {count} appearances", i + 1);
         }
     }
-    if let Some(num) = commands.bottom {
+    if let Some(num) = commands.bottom.map(|num| num as usize) {
         println!();
         if num > data.len() {
             println!("the given number exceeds the total word count. continuing anyway");
@@ -94,8 +94,8 @@ fn main() {
             percent = 100.0 * processor.rare_words as f64 / processor.words.len() as f64
         )
     }
-    if let Some(out) = commands.out {
-        if commands.write_words {
+    if let Some(out) = commands.write.out {
+        if commands.write.write_words {
             match serde_json::ser::to_string_pretty(&processor) {
                 Ok(res) => {
                     println!("success. writing to {out:?}");
