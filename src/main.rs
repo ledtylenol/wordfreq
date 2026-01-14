@@ -94,8 +94,8 @@ fn main() {
             percent = 100.0 * processor.rare_words as f64 / processor.words.len() as f64
         )
     }
-    if let Some(out) = commands.write.out {
-        if commands.write.write_words {
+    if let Some(out) = commands.out {
+        if commands.write_words {
             match serde_json::ser::to_string_pretty(&processor) {
                 Ok(res) => {
                     println!("success. writing to {out:?}");

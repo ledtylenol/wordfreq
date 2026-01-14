@@ -25,17 +25,10 @@ pub struct Commands {
     pub diversity: bool,
 
     /// Path to write to
-    #[command(flatten)]
-    pub write: WriteTo,
-}
-
-#[derive(Args)]
-#[group(required = true)]
-pub struct WriteTo {
     #[arg(long, short = 'o')]
     pub out: Option<PathBuf>,
 
     /// Whether to include words in the export
-    #[arg(short, long)]
+    #[arg(short, long, requires("out"))]
     pub write_words: bool,
 }
