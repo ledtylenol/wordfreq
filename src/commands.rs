@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Args, Parser};
+use clap::Parser;
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Commands {
@@ -31,4 +31,8 @@ pub struct Commands {
     /// Whether to include words in the export
     #[arg(short, long, requires("out"))]
     pub write_words: bool,
+
+    /// Whether to print n_gram data
+    #[arg(long, value_parser = 2..4, requires("top"))]
+    pub n_grams: Option<i64>,
 }

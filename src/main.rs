@@ -44,11 +44,46 @@ fn main() {
     let processor = WordProcessor::from_str(&data, set);
     if let Some(num) = commands.top.map(|num| num as usize) {
         println!();
-        if num > data.len() {
-            println!("the given number exceeds the total word count. continuing anyway");
-        }
-        for (i, WordData { text, count }) in processor.words.iter().take(num).enumerate() {
-            println!("top {} word: {text:?} with {count} appearances", i + 1);
+        if let Some(n_grams) = commands.n_grams.map(|n| n as usize) {
+            if n_grams == 2 {
+                if num > processor.bigrams.len() {
+                    println!("the given number exceeds the total word count. continuing anyway");
+                }
+                println!("top {num} bigrams:");
+                for (i, WordData { text, count }) in processor.bigrams.iter().take(num).enumerate()
+                {
+                    let percent = 100.0 * *count as f64 / processor.unique_words as f64;
+                    println!(
+                        "    {}. {text:<10?} - {count} appearances ({percent:.2}%)",
+                        i + 1
+                    );
+                }
+            } else {
+                if num > processor.trigrams.len() {
+                    println!("the given number exceeds the total word count. continuing anyway");
+                }
+                println!("top {num} trigrams:");
+                for (i, WordData { text, count }) in processor.trigrams.iter().take(num).enumerate()
+                {
+                    let percent = 100.0 * *count as f64 / processor.unique_words as f64;
+                    println!(
+                        "    {}. {text:<10?} - {count} appearances ({percent:.2}%)",
+                        i + 1
+                    );
+                }
+            }
+        } else {
+            if num > processor.words.len() {
+                println!("the given number exceeds the total word count. continuing anyway");
+            }
+            println!("top {num} words:");
+            for (i, WordData { text, count }) in processor.words.iter().take(num).enumerate() {
+                let percent = 100.0 * *count as f64 / processor.unique_words as f64;
+                println!(
+                    "    {}. {text:<10?} - {count} appearances ({percent:.2}%)",
+                    i + 1
+                );
+            }
         }
     }
     if let Some(num) = commands.bottom.map(|num| num as usize) {
@@ -73,7 +108,6 @@ fn main() {
             unic = processor.words.len(),
             procent = processor.ttr * 100.0,
             ratio = processor.ttr,
-            //TODO:
             diversitate = processor.get_variation_string()
         );
         //should never panic

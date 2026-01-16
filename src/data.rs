@@ -29,7 +29,7 @@ impl WordProcessor {
             acc.entry(elem).and_modify(|e| *e += 1).or_insert(1);
             acc
         };
-        let mut data = analyze_text
+        let data = analyze_text
             .split(|c: char| {
                 c.is_whitespace()
                     || c == ','
@@ -40,19 +40,17 @@ impl WordProcessor {
                     || c == '-'
                     || c == '—'
             })
-            .map(|word| {
-                total_words += 1;
-                word.to_lowercase()
-                    .chars()
-                    .take_while(|char| char.is_alphabetic())
-                    .collect::<String>()
-            })
+            .map(|word| word.to_lowercase())
             .filter(|s| {
+                let f = !s.is_empty() && s.chars().all(|c| c.is_alphabetic());
                 if let Some(filter) = filter.as_ref() {
-                    !s.is_empty() && !filter.contains(s)
+                    f && !filter.contains(s)
                 } else {
-                    !s.is_empty()
+                    f
                 }
+            })
+            .inspect(|_| {
+                total_words += 1;
             })
             .collect::<Vec<_>>();
 
@@ -67,31 +65,38 @@ impl WordProcessor {
                     || c == '-'
                     || c == '—'
             })
-            .map(|word| {
-                word.to_lowercase()
-                    .chars()
-                    .take_while(|char| char.is_alphabetic())
-                    .collect::<String>()
-            })
-            .filter(|s| {
-                if let Some(filter) = filter.as_ref() {
-                    !s.is_empty() && !filter.contains(s)
-                } else {
-                    !s.is_empty()
-                }
-            });
+            .map(|word| word.to_lowercase().chars().collect::<String>())
+            .filter(|s| !s.is_empty() && { s.chars().all(|c| c.is_alphabetic()) });
         let bigrams = split.clone().zip(split.clone().skip(1)).collect::<Vec<_>>();
-        let trigrams = bigrams
+        let mut trigrams = bigrams
             .clone()
             .into_iter()
             .zip(split.skip(2))
+            .filter(|((a, b), c)| {
+                // filter trigrams with more than 1 stopword
+                filter.is_none()
+                    || filter.as_ref().is_some_and(|filter| {
+                        let contains = filter.contains(a) as u8
+                            + filter.contains(b) as u8
+                            + filter.contains(c) as u8;
+                        contains == 0
+                    })
+            })
             .map(|((a, b), c)| format!("{a} {b} {c}"))
             .fold(HashMap::new(), collect_to_hashmap)
             .into_iter()
             .map(|(text, count)| WordData { text, count })
             .collect::<Vec<_>>();
-        let bigrams = bigrams
+        let mut bigrams = bigrams
             .iter()
+            .filter(|(a, b)| {
+                // filter bigrams with more than 1 stopword
+                filter.is_none()
+                    || filter.as_ref().is_some_and(|filter| {
+                        let contains = filter.contains(a) as u8 + filter.contains(b) as u8;
+                        contains == 0
+                    })
+            })
             .map(|(a, b)| format!("{a} {b}"))
             .fold(HashMap::new(), collect_to_hashmap)
             .into_iter()
@@ -103,6 +108,8 @@ impl WordProcessor {
             .map(|(text, count)| WordData { text, count })
             .collect::<Vec<WordData>>();
         words.sort_by(|a, b| b.count.cmp(&a.count));
+        bigrams.sort_by(|a, b| b.count.cmp(&a.count));
+        trigrams.sort_by(|a, b| b.count.cmp(&a.count));
 
         let avglen =
             words.iter().map(|data| data.text.len()).sum::<usize>() as f64 / words.len() as f64;
