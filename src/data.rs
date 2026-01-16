@@ -18,16 +18,18 @@ pub struct WordProcessor {
     pub rare_words: usize,
     pub unique_words: usize,
     pub words: Vec<WordData>,
+    pub bigrams: Vec<WordData>,
+    pub trigrams: Vec<WordData>,
 }
 
 impl WordProcessor {
-    pub fn from_str(data: &str, filter: Option<WordFilter>) -> Self {
+    pub fn from_str(analyze_text: &str, filter: Option<WordFilter>) -> Self {
         let mut total_words = 0;
         let collect_to_hashmap = |mut acc: HashMap<_, _>, elem| {
             acc.entry(elem).and_modify(|e| *e += 1).or_insert(1);
             acc
         };
-        let data = data
+        let mut data = analyze_text
             .split(|c: char| {
                 c.is_whitespace()
                     || c == ','
@@ -45,21 +47,65 @@ impl WordProcessor {
                     .take_while(|char| char.is_alphabetic())
                     .collect::<String>()
             })
-            .filter(|s| !s.is_empty());
-        let data = match filter {
-            Some(f) => data
-                .filter(|data| !f.contains(data))
-                .fold(HashMap::new(), collect_to_hashmap),
-            None => data.fold(HashMap::new(), collect_to_hashmap),
-        };
+            .filter(|s| {
+                if let Some(filter) = filter.as_ref() {
+                    !s.is_empty() && !filter.contains(s)
+                } else {
+                    !s.is_empty()
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let split = analyze_text
+            .split(|c: char| {
+                c.is_whitespace()
+                    || c == ','
+                    || c == '.'
+                    || c == '"'
+                    || c == '!'
+                    || c == '?'
+                    || c == '-'
+                    || c == '—'
+            })
+            .map(|word| {
+                word.to_lowercase()
+                    .chars()
+                    .take_while(|char| char.is_alphabetic())
+                    .collect::<String>()
+            })
+            .filter(|s| {
+                if let Some(filter) = filter.as_ref() {
+                    !s.is_empty() && !filter.contains(s)
+                } else {
+                    !s.is_empty()
+                }
+            });
+        let bigrams = split.clone().zip(split.clone().skip(1)).collect::<Vec<_>>();
+        let trigrams = bigrams
+            .clone()
+            .into_iter()
+            .zip(split.skip(2))
+            .map(|((a, b), c)| format!("{a} {b} {c}"))
+            .fold(HashMap::new(), collect_to_hashmap)
+            .into_iter()
+            .map(|(text, count)| WordData { text, count })
+            .collect::<Vec<_>>();
+        let bigrams = bigrams
+            .iter()
+            .map(|(a, b)| format!("{a} {b}"))
+            .fold(HashMap::new(), collect_to_hashmap)
+            .into_iter()
+            .map(|(text, count)| WordData { text, count })
+            .collect::<Vec<_>>();
+        let data = data.into_iter().fold(HashMap::new(), collect_to_hashmap);
         let mut words = data
             .into_iter()
-            .map(|(word, count)| WordData { word, count })
+            .map(|(text, count)| WordData { text, count })
             .collect::<Vec<WordData>>();
         words.sort_by(|a, b| b.count.cmp(&a.count));
 
         let avglen =
-            words.iter().map(|data| data.word.len()).sum::<usize>() as f64 / words.len() as f64;
+            words.iter().map(|data| data.text.len()).sum::<usize>() as f64 / words.len() as f64;
         let ttr = words.len() as f64 / total_words as f64;
         let rare_words = words.iter().filter(|word| word.count == 1).count();
         Self {
@@ -70,12 +116,25 @@ impl WordProcessor {
             total_words,
             ttr,
             rare_words,
+            bigrams,
+            trigrams,
+        }
+    }
+    pub fn get_variation_string(&self) -> String {
+        if self.ttr < 0.05 {
+            "low variation".into()
+        } else if self.ttr < 0.15 {
+            "medium variation".into()
+        } else if self.ttr < 0.3 {
+            "medium-high variation".into()
+        } else {
+            "high variation".into()
         }
     }
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct WordData {
-    pub word: String,
+    pub text: String,
     pub count: usize,
 }

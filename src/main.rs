@@ -47,8 +47,8 @@ fn main() {
         if num > data.len() {
             println!("the given number exceeds the total word count. continuing anyway");
         }
-        for (i, WordData { word, count }) in processor.words.iter().take(num).enumerate() {
-            println!("top {} word: {word:?} with {count} appearances", i + 1);
+        for (i, WordData { text, count }) in processor.words.iter().take(num).enumerate() {
+            println!("top {} word: {text:?} with {count} appearances", i + 1);
         }
     }
     if let Some(num) = commands.bottom.map(|num| num as usize) {
@@ -56,11 +56,11 @@ fn main() {
         if num > data.len() {
             println!("the given number exceeds the total word count. continuing anyway");
         }
-        for (i, WordData { word, count }) in processor.words.iter().rev().take(num).enumerate() {
+        for (i, WordData { text, count }) in processor.words.iter().rev().take(num).enumerate() {
             if *count > 1 {
-                println!("bottom {} word: {word:?} with {count} appearances", i + 1);
+                println!("bottom {} word: {text:?} with {count} appearances", i + 1);
             } else {
-                println!("bottom {} word: {word:?}", i + 1);
+                println!("bottom {} word: {text:?}", i + 1);
             }
         }
     }
@@ -74,22 +74,22 @@ fn main() {
             procent = processor.ttr * 100.0,
             ratio = processor.ttr,
             //TODO:
-            diversitate = "todo"
+            diversitate = processor.get_variation_string()
         );
         //should never panic
         let max = processor
             .words
             .iter()
-            .max_by(|a, b| a.word.len().cmp(&b.word.len()))
+            .max_by(|a, b| a.text.len().cmp(&b.text.len()))
             .unwrap();
         println!(
             "Average word length: {len:.2}\nLongest word: \"{cuv}\" ({caractere} characters)\n",
             len = processor.avglen,
-            cuv = max.word,
-            caractere = max.word.len()
+            cuv = max.text,
+            caractere = max.text.len()
         );
         println!(
-            "Cuvinte rare (1 aparitie): {count}, ({percent:.1}% din vocabular)",
+            "Rare words (1 appearance): {count}, ({percent:.1}% of vocabilary)",
             count = processor.rare_words,
             percent = 100.0 * processor.rare_words as f64 / processor.words.len() as f64
         )
