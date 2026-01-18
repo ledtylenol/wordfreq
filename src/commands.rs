@@ -37,6 +37,10 @@ pub struct Commands {
     /// Custom stopword filter to use instead of the default one
     #[arg(long)]
     pub custom_filter: Option<PathBuf>,
+
+    // Context search string
+    #[arg(long)]
+    pub concordance: Option<String>,
 }
 
 #[derive(Args)]
@@ -176,6 +180,56 @@ impl Commands {
             self.top(&processor);
             self.diversity(&processor);
             self.out(&processor);
+            self.concordance(&data);
+        }
+    }
+
+    pub fn concordance(&self, haystack: &str) {
+        let Some(needle) = self.concordance.as_ref() else {
+            return;
+        };
+
+        // turn the haystack into a vec of words
+        let words = haystack.split_whitespace().collect::<Vec<_>>();
+
+        let word_count = words.len();
+        // save all indices wherein the word is found
+        let v = words
+            .iter()
+            .enumerate()
+            .filter(|(_, word)| word.to_lowercase().contains(needle))
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
+
+        for i in v.iter() {
+            let overshoot = i + 2 > word_count;
+            let undershoot = *i < 1;
+            let min_i = (i - 3).max(0);
+            let max_i = (i + 3).min(word_count);
+            if !undershoot {
+                print!("...");
+            }
+
+            let mut first = true;
+            for (j, word) in words.iter().enumerate().take(max_i).skip(min_i) {
+                if first {
+                    if j == *i {
+                        print!("*{}*", word);
+                    } else {
+                        print!("{}", word);
+                    }
+
+                    first = false;
+                } else if j == *i {
+                    print!(" *{}*", word);
+                } else {
+                    print!(" {}", word);
+                }
+            }
+            if !overshoot {
+                print!("...");
+            }
+            println!();
         }
     }
 }

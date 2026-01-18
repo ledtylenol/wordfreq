@@ -12,5 +12,6 @@ fn main() {
     let now = Instant::now();
 
     commands.handle_commands();
+
     println!("processing finished after {} ms", now.elapsed().as_millis());
 }
