@@ -74,12 +74,13 @@ impl Commands {
             return;
         };
         println!();
+        // turn the val to a usize
         if let Some(n_grams) = self.n_grams.map(|n| n as usize) {
             if n_grams == 2 {
                 if num > processor.bigrams.len() {
                     println!("the given number exceeds the total word count. continuing anyway");
                 }
-                println!("top {num} bigrams:");
+                println!("\ntop {num} bigrams:");
                 for (i, WordData { text, count }) in processor.bigrams.iter().take(num).enumerate()
                 {
                     let percent = 100.0 * *count as f64 / processor.unique_words as f64;

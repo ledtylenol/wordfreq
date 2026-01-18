@@ -25,12 +25,15 @@ pub struct WordProcessor {
 impl WordProcessor {
     pub fn from_str(analyze_text: &str, filter: Option<WordFilter>) -> Self {
         let mut total_words = 0;
+        // closure to accumulate to a hashmap
         let collect_to_hashmap = |mut acc: HashMap<_, _>, elem| {
             acc.entry(elem).and_modify(|e| *e += 1).or_insert(1);
             acc
         };
+
         let data = analyze_text
             .split(|c: char| {
+                // common split particles
                 c.is_whitespace()
                     || c == ','
                     || c == '.'
@@ -42,6 +45,7 @@ impl WordProcessor {
             })
             .map(|word| word.to_lowercase())
             .filter(|s| {
+                // only get the words that are alphabetic
                 let f = !s.is_empty() && s.chars().all(|c| c.is_alphabetic());
                 if let Some(filter) = filter.as_ref() {
                     f && !filter.contains(s)
@@ -50,6 +54,7 @@ impl WordProcessor {
                 }
             })
             .inspect(|_| {
+                // increment the word count
                 total_words += 1;
             })
             .collect::<Vec<_>>();
@@ -67,6 +72,7 @@ impl WordProcessor {
             })
             .map(|word| word.to_lowercase().chars().collect::<String>())
             .filter(|s| !s.is_empty() && { s.chars().all(|c| c.is_alphabetic()) });
+        // tuple of (i, i+1)
         let bigrams = split.clone().zip(split.clone().skip(1)).collect::<Vec<_>>();
         let mut trigrams = bigrams
             .clone()
@@ -76,10 +82,7 @@ impl WordProcessor {
                 // filter trigrams with more than 1 stopword
                 filter.is_none()
                     || filter.as_ref().is_some_and(|filter| {
-                        let contains = filter.contains(a) as u8
-                            + filter.contains(b) as u8
-                            + filter.contains(c) as u8;
-                        contains == 0
+                        !(filter.contains(a) || filter.contains(b) || filter.contains(c))
                     })
             })
             .map(|((a, b), c)| format!("{a} {b} {c}"))
@@ -92,10 +95,9 @@ impl WordProcessor {
             .filter(|(a, b)| {
                 // filter bigrams with more than 1 stopword
                 filter.is_none()
-                    || filter.as_ref().is_some_and(|filter| {
-                        let contains = filter.contains(a) as u8 + filter.contains(b) as u8;
-                        contains == 0
-                    })
+                    || filter
+                        .as_ref()
+                        .is_some_and(|filter| !(filter.contains(a) || filter.contains(b)))
             })
             .map(|(a, b)| format!("{a} {b}"))
             .fold(HashMap::new(), collect_to_hashmap)
