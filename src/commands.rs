@@ -43,6 +43,10 @@ pub struct Commands {
     #[arg(long)]
     pub concordance: Option<String>,
 
+    /// Maximum examples to be included
+    #[arg(long, requires = "concordance")]
+    pub max: Option<usize>,
+
     /// Whether to print a word cloud
     #[arg(long)]
     pub cloud: bool,
@@ -159,16 +163,21 @@ impl Commands {
         }
     }
 
-    pub fn get_set(&self) -> Option<WordFilter> {
+    // get the word filter
+    pub fn get_word_filter(&self) -> Option<WordFilter> {
         if !self.analyze_stopwords {
             if let Some(path) = self.custom_filter.as_ref() {
                 let mut text = String::new();
+                // open the file by path
                 let mut file = File::open(path).expect("could not open the specified filter file");
                 file.read_to_string(&mut text)
                     .expect("could not read the specified filter file");
                 Some(
-                    serde_json::from_str(&text)
-                        .expect("could not parse the words from the specified filter file"),
+                    // deserialize the json
+                    // possibly add fallback fuzzy plaintext search?
+                    serde_json::from_str(&text).expect(
+                        "could not parse the words from the specified filter file (needs json)",
+                    ),
                 )
             } else {
                 Some(serde_json::from_str(include_str!("../stop_words.json")).unwrap())
@@ -179,6 +188,7 @@ impl Commands {
     }
 
     pub fn handle_commands(&self) {
+        // these two are always mutually exclusive due to command parsing
         if let Some(v) = self.file_args.compare.as_ref() {
             todo!("compare!!! {v:?}");
         } else if let Some(path) = &self.file_args.analyze {
@@ -186,7 +196,12 @@ impl Commands {
             let mut data = String::new();
             f.read_to_string(&mut data).expect("could not read file");
 
-            let processor = WordProcessor::from_str(&data, self.get_set());
+            // don't waste time processing nothing
+            if data.is_empty() {
+                eprintln!("there is no text to analyze");
+                return;
+            }
+            let processor = WordProcessor::from_str(&data, self.get_word_filter());
             self.top(&processor);
             self.diversity(&processor);
             self.out(&processor);
@@ -213,7 +228,7 @@ impl Commands {
             .collect::<Vec<_>>();
 
         // go through every index
-        for &i in v.iter() {
+        for &i in v.iter().take(self.max.unwrap_or(v.len())) {
             // compute whether there's more words to the left and right
             let overshoot = i + 2 > word_count;
             let undershoot = i < 1;
@@ -245,7 +260,13 @@ impl Commands {
             if !overshoot {
                 print!("...");
             }
+
             println!();
+        }
+        if let Some(max) = self.max
+            && max < v.len()
+        {
+            println!("...and {} more", v.len() - max);
         }
     }
     pub fn cloud(&self, processor: &WordProcessor) {
