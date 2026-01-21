@@ -23,7 +23,7 @@ pub struct WordProcessor {
 }
 
 impl WordProcessor {
-    pub fn from_str(analyze_text: &str, filter: Option<WordFilter>) -> Self {
+    pub fn from_str(analyze_text: &str, filter: &Option<WordFilter>) -> Self {
         let mut total_words = 0;
         // closure to accumulate to a hashmap
         let collect_to_hashmap = |mut acc: HashMap<_, _>, elem| {

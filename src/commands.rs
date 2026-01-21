@@ -40,7 +40,7 @@ pub struct Commands {
     pub custom_filter: Option<PathBuf>,
 
     /// Context search string
-    #[arg(long)]
+    #[arg(long, requires = "analyze")]
     pub concordance: Option<String>,
 
     /// Maximum examples to be included
@@ -190,8 +190,104 @@ impl Commands {
 
     pub fn handle_commands(&self) {
         // these two are always mutually exclusive due to command parsing
-        if let Some(v) = self.file_args.compare.as_ref() {
-            todo!("compare!!! {v:?}");
+        let filter = self.get_word_filter();
+        if let Some([p1, p2]) = self.file_args.compare.as_ref().map(|v| &v[..2]) {
+            // quick check for unused commands
+            [
+                (self.analyze_stopwords, "analyze_stopwords"),
+                (self.top.is_some(), "top"),
+                (self.n_grams.is_some(), "n_grams"),
+                (self.concordance.is_some(), "concordance"),
+                (self.out.is_some(), "out"),
+                (self.cloud, "cloud"),
+            ]
+            .iter()
+            .filter_map(|(is, var)| if *is { Some(var) } else { None })
+            .for_each(|var| println!("warning! {var} has no effect in compare mode"));
+            let (mut f1, mut f2) = (
+                File::open(p1).expect("could not open the first file"),
+                File::open(p2).expect("could not open the second file"),
+            );
+            let mut data = String::new();
+            f1.read_to_string(&mut data)
+                .expect("could not read the first file");
+            if data.is_empty() {
+                eprintln!("there is no text to analyze");
+                return;
+            }
+            let processor1 = WordProcessor::from_str(&data, &filter);
+            f2.read_to_string(&mut data)
+                .expect("could not read the first file");
+            if data.is_empty() {
+                eprintln!("there is no text to analyze");
+                return;
+            }
+            let processor2 = WordProcessor::from_str(&data, &filter);
+
+            // there was no example on what to do with compare
+            // so I will take some liberties
+            self.diversity(&processor1);
+            println!();
+            self.diversity(&processor2);
+            println!();
+
+            match processor1
+                .avglen
+                .partial_cmp(&processor2.avglen)
+                .expect("could not compare the texts properly")
+            {
+                std::cmp::Ordering::Less => {
+                    println!("the first text has lower average word length")
+                }
+                std::cmp::Ordering::Equal => println!("the texts have equal average word length"),
+                std::cmp::Ordering::Greater => {
+                    println!("the first text has greater average word length")
+                }
+            }
+
+            match processor1
+                .ttr
+                .partial_cmp(&processor2.ttr)
+                .expect("could not compare the texts")
+            {
+                std::cmp::Ordering::Less => {
+                    println!("the first text has lower word diversity")
+                }
+                std::cmp::Ordering::Equal => println!("the texts have equal word diversity"),
+                std::cmp::Ordering::Greater => {
+                    println!("the first text has greater word diversity")
+                }
+            }
+
+            match processor1.total_words.cmp(&processor2.total_words) {
+                std::cmp::Ordering::Less => {
+                    println!("the first text has less total words")
+                }
+                std::cmp::Ordering::Equal => println!("the texts have an equal total word count"),
+                std::cmp::Ordering::Greater => {
+                    println!("the first text has more total words")
+                }
+            }
+
+            match processor1.rare_words.cmp(&processor2.rare_words) {
+                std::cmp::Ordering::Less => {
+                    println!("the first text has less rare words")
+                }
+                std::cmp::Ordering::Equal => println!("the texts have equal rare word counts"),
+                std::cmp::Ordering::Greater => {
+                    println!("the first text has more rare words")
+                }
+            }
+
+            match processor1.words.len().cmp(&processor2.words.len()) {
+                std::cmp::Ordering::Less => {
+                    println!("the first text has less unique words")
+                }
+                std::cmp::Ordering::Equal => println!("the texts have equal unique word counts"),
+                std::cmp::Ordering::Greater => {
+                    println!("the first text has more unique words")
+                }
+            }
         } else if let Some(path) = &self.file_args.analyze {
             let mut f = File::open(path).expect("could not open the specified file");
             let mut data = String::new();
@@ -202,7 +298,7 @@ impl Commands {
                 eprintln!("there is no text to analyze");
                 return;
             }
-            let processor = WordProcessor::from_str(&data, self.get_word_filter());
+            let processor = WordProcessor::from_str(&data, &filter);
             self.top(&processor);
             self.diversity(&processor);
             self.out(&processor);
