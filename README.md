@@ -37,7 +37,7 @@ cargo install --path . --locked
 ## Running the app
 
 run `wordfreq --help` for more information
-#Base command:
+# Base command:
 `wordfreq <PATH>` **OR** `wordfreq --compare <PATH1> <PATH2>`
 
 
