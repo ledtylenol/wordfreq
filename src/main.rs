@@ -15,3 +15,14 @@ fn main() {
 
     println!("processing finished after {} ms", now.elapsed().as_millis());
 }
+
+#[cfg(test)]
+mod test {
+    use crate::commands::Commands;
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        Commands::command().debug_assert();
+    }
+}
