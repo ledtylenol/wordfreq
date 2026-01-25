@@ -18,11 +18,12 @@ Basic command line NLP tool, it takes a text as input and parses it, then return
   - [Rand](https://crates.io/crates/rand)    - For cloud generation randomness
   - [Anyhow](https://crates.io/crates/anyhow)  - Simplified error handling since any possible error is unrecoverable
   - [Serde](https://crates.io/crates/serde) and [Serde_json](https://crates.io/crates/serde_json) - Data deserialization
-- Tools: Git, Cargo, TODO
+- Tools: Git, Cargo
 
 ## System Requirements
 
 On windows: [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist#latest-microsoft-visual-c-redistributable-version)
+
 On every platform: [cargo](rustup.rs)
 
 ## Installation
@@ -40,6 +41,28 @@ run `wordfreq --help` for more information
 # Base command:
 `wordfreq <PATH>` **OR** `wordfreq --compare <PATH1> <PATH2>`
 
+### Possible flags:
+
+- `--top <N>`
+  - List the top N words
+- `--concordance <TEXT>`
+  - Search for context related to <TEXT>
+  - Optional command: `--max <N>`
+    - Maximum occurrences to be listed
+- `--out <PATH>`
+  - Serialize to PATH as JSON
+- `--diversity`
+  - List various statistics about the diversity of the text
+- `--n-grams <2|3>`
+  - Print bigrams (2) or trigrams (3) instead of words
+- `--cloud`
+  - Print a word cloud
+  - Optional command: `--width <N>`
+    - Word cloud char limit (default 40)
+- `--custom-filter <PATH>`
+  - Optional JSON word list to use instead of the default one
+- `--analyze-stopwords`
+  - Include stopwords in analysis
 
 
 ## WARNING:
