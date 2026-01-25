@@ -1,0 +1,3 @@
+Aplicație de analiză a frecvenței cuvintelor
+https://github.com/ledtylenol/wordfreq
+https://hub.docker.com/repository/docker/ledtylenol/wordfreq/general

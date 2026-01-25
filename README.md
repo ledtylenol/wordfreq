@@ -24,7 +24,7 @@ Basic command line NLP tool, it takes a text as input and parses it, then return
 
 On windows: [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist#latest-microsoft-visual-c-redistributable-version)
 
-On every platform: [cargo](rustup.rs)
+On every platform: [cargo](https://rustup.rs)
 
 ## Installation
 
