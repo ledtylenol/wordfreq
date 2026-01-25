@@ -46,7 +46,7 @@ run `wordfreq --help` for more information
 - `--top <N>`
   - List the top N words
 - `--concordance <TEXT>`
-  - Search for context related to <TEXT>
+  - Search for context related to TEXT
   - Optional command: `--max <N>`
     - Maximum occurrences to be listed
 - `--out <PATH>`
