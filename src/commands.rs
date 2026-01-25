@@ -20,7 +20,7 @@ pub struct Commands {
     pub analyze_stopwords: bool,
 
     /// List the top N words
-    #[arg(short = 't', long, value_name = "N", value_parser = 1..10000)]
+    #[arg(short = 't', long, value_name = "N", value_parser = 1..10000, requires = "analyze")]
     pub top: Option<i64>,
 
     /// Show various statistics about diversity
@@ -28,11 +28,11 @@ pub struct Commands {
     pub diversity: bool,
 
     /// Path to write to
-    #[arg(long, short = 'o')]
+    #[arg(long, short = 'o', requires = "analyze")]
     pub out: Option<PathBuf>,
 
     /// Whether to print n_gram data
-    #[arg(long, value_parser = 2..4, requires("top"))]
+    #[arg(long, value_parser = 2..4, requires = "top", requires = "analyze")]
     pub n_grams: Option<i64>,
 
     /// Custom stopword filter to use instead of the default one
@@ -44,15 +44,21 @@ pub struct Commands {
     pub concordance: Option<String>,
 
     /// Maximum examples to be included
-    #[arg(long, requires = "concordance")]
+    #[arg(long, requires = "concordance", requires = "analyze")]
     pub max: Option<usize>,
 
     /// Whether to print a word cloud
-    #[arg(long)]
+    #[arg(long, requires = "analyze")]
     pub cloud: bool,
 
     /// Custom word cloud width
-    #[arg(long, short, requires = "cloud", default_value_t = 40)]
+    #[arg(
+        long,
+        short,
+        requires = "cloud",
+        default_value_t = 40,
+        requires = "analyze"
+    )]
     pub width: usize,
 }
 
@@ -189,8 +195,8 @@ impl Commands {
     }
 
     pub fn handle_commands(&self) {
-        // these two are always mutually exclusive due to command parsing
         let filter = self.get_word_filter();
+        // these two are always mutually exclusive due to command parsing
         if let Some([p1, p2]) = self.file_args.compare.as_ref().map(|v| &v[..2]) {
             // quick check for unused commands
             [
